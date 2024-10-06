@@ -1,0 +1,86 @@
+---
+version: "2.1"
+
+networks:
+  mysql-net:
+    external: true
+  web:
+    external: true
+volumes:
+  data: {}
+  
+  
+services:
+  db:
+    image: mariadb:latest
+    container_name: nextcloud_db
+    volumes:
+      - /srv/dev-disk-by-uuid-12424c21-2056-486b-b61f-0fea49742808/docker/volumes/nextcloud_1/db:/var/lib/mysql
+    restart: unless-stopped
+    labels:
+      - homepage.group=Core Apps
+      - homepage.name=mariaDB
+      - homepage.href=http://10.100.50.16:8585
+      - homepage.description=maria DB
+    environment:
+      - MYSQL_ROOT_PASSWORD=LtefG9KW
+      - MYSQL_PASSWORD=redelanax
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    ports:
+      - 3306:3306
+    networks:
+      - mysql-net
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8585:8080
+    networks:
+      - mysql-net
+      
+  nextcloud:
+    image: nextcloud:29
+    container_name: nextcloud_1
+    #deploy:
+    #   resources:
+    #      limits:
+    #         cpus: '0.5'
+    #         memory: 6144M
+    #      reservations:
+    #        cpus: '0.25'
+    #        memory: 2048M      
+    environment:
+      - PUID=1010
+      - PGID=1010
+      - TZ=America/Toronto
+      - MYSQL_PASSWORD=redelanax
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=nextcloud_db
+    volumes:
+      - /srv/dev-disk-by-uuid-12424c21-2056-486b-b61f-0fea49742808/docker/volumes/nextcloud_1/config:/config
+      - /srv/dev-disk-by-uuid-9cfbb133-4272-48f4-84ca-06f057bfcc88/docker/data/nextcloud_1:/var/www/html
+       
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.entrypoints=web"
+      - "traefik.http.routers.nextcloud.rule=Host(`cloud.activpay.ca`)"
+      - "traefik.http.routers.nextcloud.tls=true"
+      - "traefik.http.routers.nextcloud.tls.certresolver=tlschallenge"
+      - "traefik.http.middlewares.nextcloud-dav.replacepathregex.regex=^/.well-known/ca(l|rd)dav"
+      - "traefik.http.middlewares.nextcloud-dav.replacepathregex.replacement=/remote.php/dav/"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      ##
+      - homepage.group=Utilities
+      - homepage.name=NextCloud
+      - homepage.href=http://10.100.50.16:8484
+
+      - homepage.description=NextCloud app
+    ports:
+
+      - 8484:80
+    networks:
+      - mysql-net
+      - web
+    restart: unless-stopped
